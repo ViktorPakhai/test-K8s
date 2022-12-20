@@ -1,0 +1,44 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: app
+
+spec:
+  rules:
+  - host: weather.vpakhai-ocg1.link
+    http:
+      paths:
+        - backend:
+           serviceName: app-service
+           servicePort: 80
+
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: mon-ingress
+  namespace: monitoring
+
+spec:
+  rules:
+  - host:  prometheus.vpakhai-ocg1.link
+    http:
+      paths:
+        - backend:
+           serviceName: prometheus-kube-prometheus-prometheus
+           servicePort: 9090
+
+  - host: grafana.vpakhai-ocg1.link
+    http:
+      paths:
+        - backend:
+           serviceName: prometheus-grafana
+           servicePort: 80
+
+  - host: alertmanager.vpakhai-ocg1.link
+    http:
+      paths:
+        - backend:
+           serviceName: prometheus-kube-prometheus-alertmanager
+           servicePort: 9093

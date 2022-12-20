@@ -1,0 +1,108 @@
+---
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: wp
+  namespace: app
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wp
+  replicas: 2 # tells deployment to run 1 pods matching the template
+  template: 
+    metadata:
+      labels:
+        app: wp
+    spec:
+      containers:
+      - name: wp
+        image: rivethead42/weather-app
+        ports:
+        - containerPort: 3000
+        livenessProbe:   # Helth check tcp 3000 container if it elive
+          tcpSocket:
+            port: 3000
+          initialDelaySeconds: 2 #Default 0 
+          periodSeconds: 10 #Default 10 
+          timeoutSeconds: 1 #Default 1 
+          successThreshold: 1 #Default 1 
+          failureThreshold: 3 #Default 3  
+        readinessProbe:            #for Service, to send trafic when container it works.
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5  
+
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 250m
+            memory: 128M
+        env:
+          - name: INTERVAL
+            valueFrom: 
+              configMapKeyRef:
+                name: demo-task6
+                key: interval
+                 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+  namespace: app
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 3000
+  type: ClusterIP
+  selector:
+    app: wp
+
+
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: wp-autoscaling
+  namespace: app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: wp
+  minReplicas: 2
+  maxReplicas: 4
+
+  behavior:
+    scaleUp:
+      policies:
+      - type: Pods
+        value: 10
+        periodSeconds: 60
+    scaleDown:
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60    
+
+  
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 30
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 40
